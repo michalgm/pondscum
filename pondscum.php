@@ -4,7 +4,7 @@ $keys = array('Eb'=>'a', 'Bb'=>'d', 'C'=>'c', 'F'=>'g');
 $clefs = array('treble', 'bass', 'alto', 'tenor');
 $layouts = array('letter'=>'"letter"', 'lyre'=>'"b6" \'landscape');
 $octaves = array('+2'=> "''", '+1'=>"'", '0'=>'', "-1"=>',','-2'=>',,');
-$instruments = array('bass'=>'tuba', 'melody'=>'trumpet', 'tenor'=>'trombone', 'pahs'=>'trombone', 'riffTwo'=>'clarinet', 'harmony'=>'clarinet', 'chordLo'=>'trombone', 'chordMid'=>'baritone sax', 'bari'=>'baritone sax');
+$instruments = array('bass'=>'tuba', 'melody'=>'trumpet', 'tenor'=>'trombone', 'pahs'=>'trombone', 'riffTwo'=>'clarinet', 'harmony'=>'clarinet', 'chordLo'=>'trombone', 'chordMid'=>'baritone sax', 'bari'=>'baritone sax', 'countermelody'=>'alto sax');
 
 function printHTTPHeader($lily, $part) {
 	global $_REQUEST;
@@ -103,7 +103,7 @@ function processFile($file, $dir='blo') {
 		$lily['tempo'] = isset($tempo[1]) ? $tempo[1] : ' 4 = 100';
 		$lily['file'] = $file;
 		$lily['path'] = $path;
-		$lily['source'] = preg_replace('/\%layout.*/si', '', $score);
+		$lily['source'] = preg_replace('/\%%?(Generated )?layout.*/si', '', $score);
 		$lily['changes'] = array_search('changes', $lily['parts']) ? 1 : 0;
 		$lily['words'] = array_search('words', $lily['parts']);
 		if (isset($description[1])) { 
@@ -176,7 +176,7 @@ function buildLayout($lily) {
 	if ($part == 'score'  || $part == 'source' || $part == 'midi') {
 		$parts = $lily['parts'];
 		$layout .= "\n#(set-default-paper-size ".$layouts[$page].')';
-		$layout .= "\n\\book {\n\t\\score { <<\n\t\t\t\\set Score.markFormatter = #format-mark-box-letters
+		$layout .= "\n\\book {\n\t\\score { <<\n\t\t\t\\set Score.markFormatter = #format-mark-box-numbers
 			";
 		if ($part != 'midi') { $layout .= $changes; }
 		foreach ($parts as $lilypart) { 
@@ -190,7 +190,7 @@ function buildLayout($lily) {
 				$layout .= "\n\t\t\t\\tempo $tempo";
 				$tempo = "";
 			}
-			$layout .= "\n\t\t\t\\$lilypart\n\t\t}";
+			$layout .= "\n\t\t\t\\override Score.RehearsalMark #'self-alignment-X = #LEFT\n\t\t\t\\$lilypart\n\t\t}";
 		}
 		$layout .= "\n\t>> \\layout { \\context { \\Score \\remove \"Volta_engraver\" } } ";
 		if ($part == 'midi') { $layout .= "\n\t\\midi { } "; $words = "";}
@@ -220,8 +220,9 @@ function buildLayout($lily) {
 			$layout .="
 			\\score { <<
 				$changes
-				\\set Score.markFormatter = #format-mark-box-letters
+				\\set Score.markFormatter = #format-mark-box-numbers
 				\\new Staff \\with { \\consists \"Volta_engraver\" } { 
+				  \\override Score.RehearsalMark #'self-alignment-X = #LEFT  
 					$staffspacing	
 					\\clef $clef 
 				$naturalize \\transpose c ".$keys[$key].$octave."
