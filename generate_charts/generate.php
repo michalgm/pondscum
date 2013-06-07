@@ -3,6 +3,7 @@
 include('../pondscum.php');
 
 $lilydir = "../blo/";
+$output = "./output/";
 $newmusicdir = "sheetmusic/";
 $oldmusicdir = "sheetmusic_archive/";
 $workingmusicdir = "sheetmusic_working/";
@@ -41,6 +42,7 @@ foreach ($lilies as $lily) {
 		} else { 
 			$musicdir = $newmusicdir;
 		}
+		$musicdir = "$output/$musicdir/";
 		$dir = "$musicdir/".$title;
 		if (is_dir($dir)) {
 			rrmdir($dir);
