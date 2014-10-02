@@ -1,6 +1,6 @@
 <?php
 
-$keys = array('Eb'=>'a', 'Bb'=>'d', 'C'=>'c', 'F'=>'g');
+$keys = array('Eb'=>'ees', 'Bb'=>'bes', 'C'=>'c', 'F'=>'f');
 $clefs = array('treble', 'bass', 'alto', 'tenor');
 $layouts = array('letter'=>'"letter"', 'lyre'=>'"b6" \'landscape');
 $octaves = array('+2'=> "''", '+1'=>"'", '0'=>'', "-1"=>',','-2'=>',,');
@@ -169,7 +169,7 @@ function buildLayout($lily) {
 		$layout .= $naturalize_function;
 	}
 	$changes = "";
-	if ($lily['changes']) { $changes = "\n\t\t\\transpose c ".$keys[$key]." \\new ChordNames { \\set chordChanges = ##t \\changes }"; }
+	if ($lily['changes']) { $changes = "\n\t\t\\transpose ".$keys[$key]." c \\new ChordNames { \\set chordChanges = ##t \\changes }"; }
 	$words = "";
 	if ($lily['words']) { $words = " \n\t\words"; }
 	$tempo = $lily['tempo'];
@@ -225,7 +225,7 @@ function buildLayout($lily) {
 				  \\override Score.RehearsalMark #'self-alignment-X = #LEFT  
 					$staffspacing	
 					\\clef $clef 
-				$naturalize \\transpose c ".$keys[$key].$octave."
+				$naturalize \\transpose ".$keys[$key]." c".$octave."
 				\\$part
 				} >> 
 				\\layout { \\context { \\Score \\remove \"Volta_engraver\" } }

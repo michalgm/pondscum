@@ -4,25 +4,31 @@ include('../pondscum.php');
 
 $lilydir = "../blo/";
 $output = "./output/";
-$newmusicdir = "sheetmusic/";
-$oldmusicdir = "sheetmusic_archive/";
-$workingmusicdir = "sheetmusic_working/";
-$musicdir = "";
+$dirs = array(
+	'current'=>'sheetmusic',
+	'oldcharts'=>'sheetmusic_archive',
+	'working'=>'sheetmusic_working'
+);
+$lilies = array();
+
 if (isset($argv[1])) { 
 	if($argv[1] == 'all') { 
-		rrmdir($musicdir);
-		mkdir($musicdir);
+		foreach(array_keys($dirs) as $dir) {
+			$outdir = $output.$dirs[$dir];
+			rrmdir("$outdir");
+			mkdir("$outdir");
 
-		$dirh = opendir($lilydir);
-		while (($file = readdir($dirh)) !== false) {
-			if ($file == 'include.ly' || ! preg_match("/\.ly$/", $file)) { continue; }
-			$lilies[] = processFile($file, $lilydir);
+			$dirh = opendir($dir);
+			while (($file = readdir($dirh)) !== false) {
+				if ($file == 'include.ly' || ! preg_match("/\.ly$/", $file)) { continue; }
+				$lilies[] = processFile("$dir/$file");
+			}
 		}
 	} else {
 		array_shift($argv);
-		foreach($argv as $song) {
-			#$song = preg_replace("/\.ly$/", "", $song);
-			$lilies[] = processFile($song);
+		foreach($argv as $file) {
+			if ($file == 'include.ly' || ! preg_match("/\.ly$/", $file)) { continue; }
+			$lilies[] = processFile($file);
 		}
 	}
 } else {
@@ -33,17 +39,20 @@ if (isset($argv[1])) {
 usort($lilies, 'lilysort');
 $index = "";
 foreach ($lilies as $lily) { 
+	$musicdir = "";
 	if ($lily) { 
+		#set current date as tagline
+		$lily['source'] = preg_replace("/^\s+tagline ?=.*$/m", "", $lily['source']);
+		$lily['source'] = preg_replace("/\\\header\s*{/", "\\header { \n\ttagline = ".date('"n/j/Y"'), $lily['source']);
+
 		$title = str_replace(" ", "_", $lily['title']);
-		if (strpos($lily['path'], "oldcharts") !== false) { 
-			$musicdir = $oldmusicdir;
-		} else if (strpos($lily['path'], "working") !== false) { 
-			$musicdir = $workingmusicdir;
-		} else { 
-			$musicdir = $newmusicdir;
-		}
+		$pathinfo = pathinfo($lily['path']); 
+		$musicdir = $dirs[$pathinfo['dirname']];
+		if (! $musicdir) { die("Unknown directory $pathinfo[dirname]"); }
 		$musicdir = "$output/$musicdir/";
 		$dir = "$musicdir/".$title;
+		print getcwd()."\n";
+		print "$dir\n";
 		if (is_dir($dir)) {
 			rrmdir($dir);
 		}
@@ -85,7 +94,7 @@ foreach ($lilies as $lily) {
 		print "$title.zip\n";
 		chdir("$musicdir");
 		system("zip -qr \"$title/$title\".zip	\"$title\"");
-		chdir("../");
+		chdir("../../");
 		print "\n";
 	}
 }
