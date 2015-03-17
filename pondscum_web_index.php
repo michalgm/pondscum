@@ -18,7 +18,7 @@ function printHTTPHeader($lily, $part) {
     header('Content-Disposition: attachment; filename="'.$filename.'.ly"');
   } else {
     header('Content-type: application/pdf');
-    header('Content-Disposition: attachment; filename="'.$filename.'.pdf"');
+    header('Content-Disposition: inline; filename="'.$filename.'.pdf"');
   }
 }
 
