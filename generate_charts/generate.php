@@ -28,7 +28,7 @@ if (isset($argv[1])) {
 		array_shift($argv);
 		foreach($argv as $file) {
 			if ($file == 'include.ly' || ! preg_match("/\.ly$/", $file)) { continue; }
-			$lilies[] = processFile($file);
+			$lilies[] = processFile(preg_replace("/^\.+\//", "", $file));
 		}
 	}
 } else {
@@ -76,7 +76,6 @@ foreach ($lilies as $lily) {
 				mkdir("$dir/$part");
 				foreach (array_keys($keys) as $key) {
 					$lily['outputoptions']['key'] = $key;
-					if ($key == 'F') { continue; }
 					foreach ($clefs as $clef) {
 						$lily['outputoptions']['clef'] = $clef;
 						if ($clef == 'alto' || $clef == 'tenor') { continue; }
