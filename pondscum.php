@@ -68,12 +68,34 @@ function processFile($file, $dir='blo') {
 		preg_match('/tempo(.*)$/m', $score, $tempo);
 		if (! isset($title[1])) { print $file; print_r($score); return; }
 		$lily['title'] = $title[1];
+
 		$parts = array();
+
 		if (isset($partsmatch[1])) {
-			$parts = $partsmatch[1];
-			foreach($parts as $key=>$part) {
-				if (preg_match("/^$part\s*=[^{]*{\s*}/m", $score)) {
-					unset($parts[$key]);
+			$rawParts = $partsmatch[1];
+			foreach ($rawParts as $key => $name) {
+
+				if (preg_match("/^$name\s*=[^{]*{\s*}/m", $score)) {
+					// unset($rawParts[$key]);
+					continue;
+				}
+				// Check if part contains underscore
+				if (strpos($name, '_') !== false) {
+					list($groupName, $subPart) = explode('_', $name, 2);
+
+					if (!isset($parts[$groupName])) {
+						$parts[$groupName] = array();
+					}
+
+					$parts[$groupName][] = array(
+						'name' => $name,
+						'label' => $subPart
+					);
+				} else {
+					$parts[$name][] = array(
+						'name' => $name,
+						'label' => ''
+					);
 				}
 			}
 		}
@@ -116,65 +138,110 @@ function buildLayout($lily) {
 	$words = "";
 	if ($lily['words']) { $words = " \n\t\words"; }
 	$tempo = $lily['tempo'];
+	$tempoMark = "";
+	if ($tempo) {
+		$tempoMark = "\n\t\t\t\\tempo $tempo";
+	}
 	if ($part == 'score'  || $part == 'source' || $part == 'midi') {
 		$parts = $lily['parts'];
 		$layout .= "\n#(set-default-paper-size ".$layouts[$page].')';
-		$layout .= "\n\\book {\n\t\\score { <<\n\t\t\t\\set Score.markFormatter = #format-mark-box-numbers
+		$layout .= "\n\\pointAndClickOff\n";
+		$layout .= "\n\\book {\n\t\\score { <<\n\t\t\t\\set Score.rehearsalMarkFormatter = #format-mark-box-numbers
+
 			";
 		if ($part != 'midi') { $layout .= $changes; }
-		foreach ($parts as $lilypart) {
-			if ($lilypart == 'changes' || $lilypart == 'words') { continue; }
-			$instrument = isset($instruments[$lilypart]) ? $instruments[$lilypart] : 'alto sax';
-			$clef = $lilypart == 'bass' ? 'bass' : 'treble';
-			$layout .="\n\t\t";
-			if ($part == 'midi') { $layout .= '\unfoldRepeats '; }
-			$layout .= "\\new Staff \\with { \\consists \"Volta_engraver\" } {  \\set Staff.midiInstrument = #\"$instrument\" \\clef $clef";
-			if ($tempo) {
-				$layout .= "\n\t\t\t\\tempo $tempo";
-				$tempo = "";
+		// Process all parts with the unified structure
+		foreach ($parts as $groupName => $subParts) {
+			// Skip special parts
+			if ($groupName == 'changes' || $groupName == 'words') {
+				continue;
 			}
-			$layout .= "\n\t\t\t\\override Score.RehearsalMark #'self-alignment-X = #LEFT\n\t\t\t\\$lilypart\n\t\t}";
+			// Add a comment for the group
+			$layout .= "\n\t\t% Group: " . ucwords($groupName);
+			foreach ($subParts as $subPart) {
+				$partName = $subPart['name'];
+				$label = $subPart['label'];
+				$instrument = isset($instruments[$groupName]) ? $instruments[$groupName] : 'alto sax';
+				$clef = $groupName == 'bass' ? 'bass' : 'treble';
+
+				$layout .= "\n\t\t";
+				if ($part == 'midi') {
+					$layout .= '\unfoldRepeats ';
+				}
+
+				// Determine the display name based on whether it's a grouped part
+				$displayName = ucwords($groupName);
+				if (!empty($label)) {
+					$displayName .= " (" . ucwords($label,) . ")";
+				}
+
+				$layout .= "\\new Staff \\with { \\consists \"Volta_engraver\" instrumentName = \"$displayName\" } {  \\set Staff.midiInstrument = #\"$instrument\" \\clef $clef";
+
+				$layout .= "$tempoMark\n\t\t\t\\override Score.RehearsalMark.self-alignment-X = #LEFT\n\t\t\t\\$partName\n\t\t}";
+			}
 		}
+
 		$layout .= "\n\t>> \\layout { \\context { \\Score \\remove \"Volta_engraver\" } } ";
-		if ($part == 'midi') { $layout .= "\n\t\\midi { } "; $words = "";}
+		if ($part == 'midi') {
+			$layout .= "\n\t\\midi { } ";
+			$words = "";
+		}
 		$layout .= "} $words \n}";
 	} else {
+		// This is for individual part extraction
 		$page = $lily['outputoptions']['page'] ?: "letter";
 		$clef = $lily['outputoptions']['clef'] ?: "treble";
 		$octave = stripslashes($lily['outputoptions']['octave']);
 		$octave = getOctave($key, $part, $clef, $octave);
-		$poet = "$key ".ucwords($part);
+		$poet = "$key " . ucwords($part);
 		$staffspacing = "";
-		if($page == 'lyre') {
+		if ($page == 'lyre') {
 			$layout .= "\n#(set-global-staff-size 15)\n";
-			$staffspacing = "\\override Staff.VerticalAxisGroup #'minimum-Y-extent = #'(-1 . 1)";
+			$staffspacing = "\\override Staff.VerticalAxisGroup.minimum-Y-extent = #'(-1 . 1)";
 			$changes = "";
 		} #else {
-			$layout .= "\n#(set-default-paper-size ".$layouts[$page].')';
+		$layout .= "\n#(set-default-paper-size " . $layouts[$page] . ')';
 		#}
 		$naturalize = "";
 		if (isset($lily['outputoptions']['naturalize']) && $lily['outputoptions']['naturalize']) {
 			$naturalize = "\\naturalizeMusic ";
 		}
-		$layout .="
+		$layout .= "
 		\\pointAndClickOff
 		\\book {
 			\\header{ poet = \"$poet\" }";
+
 		if ($part != 'words') {
-			$layout .="
-			\\score { <<
-				$changes
-				\\set Score.markFormatter = #format-mark-box-numbers
-				\\new Staff \\with { \\consists \"Volta_engraver\" } {
-				  \\override Score.RehearsalMark #'self-alignment-X = #LEFT
-					$staffspacing
-					\\clef $clef
-				$naturalize \\transpose ".$keys[$key]." c".$octave."
-				\\$part
-				} >>
-				\\layout { \\context { \\Score \\remove \"Volta_engraver\" } }
-	   		} %end score
-		";
+			$subParts = array_values($lily['parts'][$part]);
+
+
+			$layout .= "
+					\\score { <<
+						$changes
+						\\set Score.rehearsalMarkFormatter = #format-mark-box-numbers";
+			foreach ($subParts as $subPart) {
+				$label = $subPart['label'];
+				$instrument = "";
+				if (!empty($label)) {
+					$instrument = " instrumentName = \" " . ucwords($label,) . "\" ";
+				}
+
+				$layout .= "\n	
+						\\new Staff \\with { \\consists \"Volta_engraver\" $instrument } {
+						$tempoMark
+						\\override Score.RehearsalMark.self-alignment-X = #LEFT
+							$staffspacing
+							\\clef $clef
+						$naturalize \\transpose " . $keys[$key] . " c" . $octave . "
+						\\" . $subPart['name'] . "
+
+						}
+						";
+			}
+			$layout .= ">>
+						\\layout { \\context { \\Score \\remove \"Volta_engraver\" } }
+					} %end score
+				";
 		}
 		if ($showwords || $part == 'words') {
 			$layout .= $words;
@@ -186,7 +253,7 @@ function buildLayout($lily) {
 	if (isset($key)) {
 		$keyname = "-$key";
 	}
-	$lily['filename'] = $lily['title']."$keyname-".ucwords($part);
+	$lily['filename'] = $lily['title'] . "$keyname-" . ucwords($part);
 	return $lily;
 }
 

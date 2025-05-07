@@ -67,7 +67,7 @@ foreach ($lilies as $lily) {
 		if (isset($lily['description'])) {
 			file_put_contents("$dir/description.txt", $lily['description']);
 		}
-		foreach ($lily['parts'] as $part) {
+		foreach (array_keys($lily['parts']) as $part) {
 			$lily['outputoptions']['part'] = $part;
 			if ($part == 'words' || $part == 'lyrics') { 
 				mkdir("$dir/$part");
