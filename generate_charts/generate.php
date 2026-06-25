@@ -121,9 +121,9 @@ function processLily(array $lily)
 						if ($clef == 'alto' || $clef == 'tenor') {
 							continue;
 						}
-						// if ($clef == 'bass' && $instrument['key'] != 'C') {
-						// 	continue;
-						// }
+						if ($clef == 'bass' && $lily['outputoptions']['key'] != 'C') {
+							continue;
+						}
 						foreach (array_keys($layouts) as $layout) {
 							$lily['outputoptions']['page'] = $layout;
 							$lily['outputoptions']['octave'] = 0;
